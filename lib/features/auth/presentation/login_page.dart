@@ -62,7 +62,7 @@ class _LoginPageState extends State<LoginPage> {
     final lightGreen = const Color(0xFFDFFFD8);
 
     return WillPopScope(
-      onWillPop: () async => false, // Evita volver atrás (pantalla negra)
+      onWillPop: () async => false,
       child: Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(
