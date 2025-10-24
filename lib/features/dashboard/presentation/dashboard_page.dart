@@ -3,7 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:green_klok_ia/routes/app_routes.dart';
 
+/// DashboardPage es la pantalla principal que se muestra después de un
+/// inicio de sesión exitoso. Proporciona una vista general del estado del
+/// sistema (Riego, Clima, Alertas, Salud), un drawer con accesos a perfil y
+/// configuración, y una barra de navegación inferior para cambiar entre
+/// vistas de datos.
+///
+/// Responsabilidades:
+/// - Cargar y mostrar el nombre y correo del usuario desde el almacenamiento seguro.
+/// - Mostrar un conjunto de tarjetas de estado que resumen áreas importantes.
+/// - Proveer navegación (drawer y barra inferior) y la funcionalidad de cerrar sesión.
 class DashboardPage extends StatefulWidget {
+  /// Crea una [DashboardPage]. El widget es stateful porque carga datos
+  /// asíncronos (información del usuario) y gestiona el índice seleccionado
+  /// de la barra de navegación inferior.
   const DashboardPage({super.key});
 
   @override
@@ -11,12 +24,26 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
+  /// Índice actualmente seleccionado en la barra de navegación inferior.
+  /// Controla el item resaltado y puede usarse para cambiar el contenido
+  /// si la página se expande para mostrar pantallas por pestaña.
   int _selectedIndex = 0;
+
+  /// Color de fondo principal para la página del dashboard (beige suave).
   final Color beige = const Color(0xFFFFF8E1);
+
+  /// Color verde de acento usado en el encabezado del drawer y en el item
+  /// seleccionado de la navegación.
   final Color green = const Color(0xFF2E7D32);
+
+  /// Instancia de almacenamiento seguro usada para leer y borrar datos de
+  /// autenticación/usuario guardados.
   final _storage = const FlutterSecureStorage();
 
+  /// Nombre del usuario cargado para mostrar. Es nulo mientras se carga.
   String? userName;
+
+  /// Correo del usuario cargado. Es nulo mientras se carga.
   String? userEmail;
 
   @override
@@ -25,30 +52,44 @@ class _DashboardPageState extends State<DashboardPage> {
     _loadUser();
   }
 
+  /// Carga la información del usuario desde el almacenamiento seguro.
+  ///
+  /// Forma esperada: una cadena JSON guardada bajo la clave 'user' que
+  /// contenga al menos los campos `name` y `email`. Si falta el valor o no
+  /// se puede parsear, la interfaz mostrará valores por defecto sin romper
+  /// la funcionalidad.
   Future<void> _loadUser() async {
     final userData = await _storage.read(key: 'user');
 
     if (userData != null) {
       final user = jsonDecode(userData);
       setState(() {
+        // Usar valores por defecto cuando no exista un campo.
         userName = user['name'] ?? 'Usuario';
         userEmail = user['email'] ?? '';
       });
     }
   }
 
+  /// Manejador llamado cuando se toca un item de la navegación inferior.
+  /// Actualiza `_selectedIndex`. Actualmente solo cambia el estado
+  /// seleccionado; se puede extender para navegar o cambiar contenido.
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
   }
 
+  /// Realiza el cierre de sesión borrando tokens y la información del
+  /// usuario en el almacenamiento seguro, y navega de vuelta a la ruta de
+  /// login limpiando la pila de navegación.
   Future<void> _logout() async {
     await _storage.delete(key: 'token');
     await _storage.delete(key: 'user');
 
     if (!mounted) return;
 
+    // Elimina todas las rutas y va a la pantalla de login.
     Navigator.pushNamedAndRemoveUntil(
       context,
       AppRoutes.login,
@@ -62,10 +103,13 @@ class _DashboardPageState extends State<DashboardPage> {
       backgroundColor: beige,
 
       appBar: AppBar(
+  // No queremos el botón 'atrás' automático en esta página.
         automaticallyImplyLeading: false,
         backgroundColor: beige,
         elevation: 0,
         title: Text(
+          // Muestra el nombre del usuario cuando esté cargado, de lo
+          // contrario muestra un marcador de carga.
           'Bienvenido, ${userName ?? "Cargando..."}',
           style: const TextStyle(
             color: Colors.black87,
@@ -74,6 +118,7 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ),
         actions: [
+          // El botón de ícono abre el end drawer (drawer en el lado derecho).
           Builder(
             builder: (context) => IconButton(
               icon: const Icon(Icons.menu, color: Colors.black87),
@@ -97,6 +142,7 @@ class _DashboardPageState extends State<DashboardPage> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
+            // El encabezado del drawer muestra el logo, nombre y correo del usuario.
             DrawerHeader(
               decoration: BoxDecoration(color: green),
               child: Column(
@@ -118,6 +164,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 ],
               ),
             ),
+
+            // Acción Perfil (placeholder)
             ListTile(
               leading: const Icon(Icons.person_outline),
               title: const Text('Perfil'),
@@ -128,6 +176,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 );
               },
             ),
+
+            // Acción Configuración (placeholder)
             ListTile(
               leading: const Icon(Icons.settings_outlined),
               title: const Text('Configuración'),
@@ -138,7 +188,10 @@ class _DashboardPageState extends State<DashboardPage> {
                 );
               },
             ),
+
             const Divider(),
+
+            // Acción Cerrar sesión: borra credenciales y regresa al login.
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text(
@@ -153,10 +206,12 @@ class _DashboardPageState extends State<DashboardPage> {
 
       // ---- CONTENIDO PRINCIPAL ----
       body: SingleChildScrollView(
+  // El padding de la página mantiene el contenido alejado de los bordes de pantalla.
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Banner de resumen / estado
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -188,8 +243,12 @@ class _DashboardPageState extends State<DashboardPage> {
                 ],
               ),
             ),
+
             const SizedBox(height: 20),
 
+            // Grid de tarjetas resumen (2 columnas). Cada tarjeta se crea
+            // usando el helper `_buildCard` que recibe título, subtítulo,
+            // color e ícono.
             GridView.count(
               crossAxisCount: 2,
               shrinkWrap: true,
