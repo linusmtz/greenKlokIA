@@ -45,9 +45,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       const SnackBar(content: Text('Se ha enviado un enlace de recuperación')),
     );
 
-    // Navegación de ejemplo: reemplaza la ruta según tu flujo.
-    // `pushReplacementNamed` evita que el usuario regrese a esta pantalla
-    // con el botón atrás.
+
     Navigator.pushReplacementNamed(context, AppRoutes.resetPassword);
   }
 

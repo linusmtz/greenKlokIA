@@ -34,7 +34,7 @@ class _SplashPageState extends State<SplashPage> {
     WidgetsFlutterBinding.ensureInitialized();
     await Future.delayed(const Duration(seconds: 2));
 
-    // Leer token desde el almacenamiento seguro
+
     final token = await _storage.read(key: 'token');
 
     if (!mounted) return; // Evita llamadas si el widget ya no está en árbol

@@ -6,6 +6,8 @@ import '../features/auth/presentation/access_page.dart';
 import '../features/auth/presentation/splash_page.dart';
 import '../features/auth/presentation/forgot_password_page.dart';
 import '../features/dashboard/presentation/dashboard_page.dart';
+import '../features/dashboard/presentation/register_greenhouse_page.dart';
+
 
 
 class AppRoutes {
@@ -29,6 +31,7 @@ class AppRoutes {
 
   /// Ruta principal del dashboard mostrada tras el login.
   static const dashboard = '/dashboard'; 
+  static const registerGreenhouse = "register-greenhouse";
 
   /// Mapa de rutas usadas por la aplicación. La clave es el nombre de la
   /// ruta y el valor es un `WidgetBuilder` que crea la pantalla
@@ -48,5 +51,6 @@ class AppRoutes {
 
         // Dashboard principal
         dashboard: (_) => const DashboardPage(),
+        registerGreenhouse: (context) => const RegisterGreenhousePage(),
       };
 }
