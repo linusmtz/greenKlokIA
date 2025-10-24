@@ -6,6 +6,8 @@ import '../features/auth/presentation/access_page.dart';
 import '../features/auth/presentation/splash_page.dart';
 import '../features/auth/presentation/forgot_password_page.dart';
 import '../features/dashboard/presentation/dashboard_page.dart';
+import '../features/dashboard/presentation/register_greenhouse_page.dart';
+
 
 
 class AppRoutes {
@@ -16,6 +18,7 @@ class AppRoutes {
   static const resetPassword = '/reset-password';
   static const forgotPassword = '/forgot-password';
   static const dashboard = '/dashboard'; 
+  static const registerGreenhouse = "register-greenhouse";
 
   static Map<String, WidgetBuilder> get routes => {
         splash: (_) => const SplashPage(),
@@ -25,5 +28,6 @@ class AppRoutes {
         resetPassword: (_) => const ResetPasswordPage(),
         forgotPassword: (_) => const ForgotPasswordPage(),
         dashboard: (_) => const DashboardPage(),
+        registerGreenhouse: (context) => const RegisterGreenhousePage(),
       };
 }

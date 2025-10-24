@@ -21,4 +21,5 @@ dev_dependencies:
 flutter:
   assets:
     - assets/images/logo.png
+    - assets/images/empty_greenhouse.png
   uses-material-design: true

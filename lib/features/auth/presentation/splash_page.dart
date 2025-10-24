@@ -22,7 +22,7 @@ class _SplashPageState extends State<SplashPage> {
     WidgetsFlutterBinding.ensureInitialized();
     await Future.delayed(const Duration(seconds: 2));
 
-    // fuerza la lectura del token después de inicializar
+
     final token = await _storage.read(key: 'token');
 
     if (!mounted) return;

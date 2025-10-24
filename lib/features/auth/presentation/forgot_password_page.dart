@@ -26,7 +26,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       const SnackBar(content: Text('Se ha enviado un enlace de recuperación')),
     );
 
-    // Aquí después llamas a tu API para enviar el link
+
     Navigator.pushReplacementNamed(context, AppRoutes.resetPassword);
   }
 
