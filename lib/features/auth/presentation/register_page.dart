@@ -3,6 +3,11 @@ import 'package:intl/intl.dart';
 import 'package:green_klok_ia/routes/app_routes.dart';
 import 'package:green_klok_ia/services/auth_service.dart';
 
+/// Pantalla de registro de usuario.
+///
+/// Contiene un formulario con validaciones para nombre, correo,
+/// teléfono, contraseña y fecha de nacimiento. Al enviar, hace una
+/// llamada a `AuthService.register` y muestra feedback con `SnackBar`.
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -11,21 +16,30 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
+  // Key para el formulario que permite validar todos los campos
   final _formKey = GlobalKey<FormState>();
   final _authService = AuthService();
 
+  // Controladores para los campos del formulario
   final _nameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _birthController = TextEditingController();
 
+  // Estado local para mostrar/ocultar la contraseña y para mostrar
+  // un indicador de carga mientras se registra.
   bool _obscurePass = true;
   bool _loading = false;
 
+  // Colores reutilizables para mantener la coherencia visual
   final green = const Color(0xFF2E7D32);
   final lightGreen = const Color(0xFFDFFFD8);
 
+  /// Abre un selector de fecha para elegir la fecha de nacimiento.
+  ///
+  /// Si el usuario selecciona una fecha, la formatea como `dd/MM/yyyy`
+  /// y la coloca en `_birthController`.
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -41,6 +55,10 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
+  /// Valida el formulario y envía los datos al servicio de autenticación.
+  ///
+  /// Muestra un `CircularProgressIndicator` mientras espera la respuesta
+  /// y usa `SnackBar` para mostrar mensajes de éxito o error.
   Future<void> _validateAndSubmit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
@@ -57,16 +75,19 @@ class _RegisterPageState extends State<RegisterPage> {
       setState(() => _loading = false);
 
       if (res['ok']) {
+        // Mostrar mensaje devuelto por el servidor y volver al login
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${res['message']}')),
         );
         Navigator.pushReplacementNamed(context, AppRoutes.login);
       } else {
+        // Mostrar error devuelto por la API
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${res['msg']}')),
         );
       }
     } catch (e) {
+      // En caso de excepción, ocultar el loader y mostrar el error
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
@@ -86,6 +107,7 @@ class _RegisterPageState extends State<RegisterPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Botón para volver a la pantalla anterior
                 IconButton(
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.arrow_back_ios_new),
@@ -102,6 +124,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
                 const SizedBox(height: 40),
+
+                // Campos del formulario: nombre, contraseña, correo, teléfono y fecha
                 _buildField(
                   'Nombre completo',
                   _nameController,
@@ -201,6 +225,7 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  /// Construye un campo de texto con etiqueta y validación opcional.
   Widget _buildField(String label, TextEditingController controller,
       {String? hint,
       TextInputType? keyboardType,
@@ -232,6 +257,7 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  /// Construye el campo de contraseña con botón para mostrar/ocultar.
   Widget _buildPasswordField() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -269,6 +295,7 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  /// Campo para seleccionar la fecha de nacimiento (readOnly, abre picker).
   Widget _buildDateField() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

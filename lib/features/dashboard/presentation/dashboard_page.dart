@@ -4,7 +4,20 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:green_klok_ia/routes/app_routes.dart';
 import 'package:green_klok_ia/services/greenhouse_service.dart';
 
+/// DashboardPage es la pantalla principal que se muestra después de un
+/// inicio de sesión exitoso. Proporciona una vista general del estado del
+/// sistema (Riego, Clima, Alertas, Salud), un drawer con accesos a perfil y
+/// configuración, y una barra de navegación inferior para cambiar entre
+/// vistas de datos.
+///
+/// Responsabilidades:
+/// - Cargar y mostrar el nombre y correo del usuario desde el almacenamiento seguro.
+/// - Mostrar un conjunto de tarjetas de estado que resumen áreas importantes.
+/// - Proveer navegación (drawer y barra inferior) y la funcionalidad de cerrar sesión.
 class DashboardPage extends StatefulWidget {
+  /// Crea una [DashboardPage]. El widget es stateful porque carga datos
+  /// asíncronos (información del usuario) y gestiona el índice seleccionado
+  /// de la barra de navegación inferior.
   const DashboardPage({super.key});
 
   @override
@@ -12,12 +25,26 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
+  /// Índice actualmente seleccionado en la barra de navegación inferior.
+  /// Controla el item resaltado y puede usarse para cambiar el contenido
+  /// si la página se expande para mostrar pantallas por pestaña.
   int _selectedIndex = 0;
+
+  /// Color de fondo principal para la página del dashboard (beige suave).
   final Color beige = const Color(0xFFFFF8E1);
+
+  /// Color verde de acento usado en el encabezado del drawer y en el item
+  /// seleccionado de la navegación.
   final Color green = const Color(0xFF2E7D32);
+
+  /// Instancia de almacenamiento seguro usada para leer y borrar datos de
+  /// autenticación/usuario guardados.
   final _storage = const FlutterSecureStorage();
 
+  /// Nombre del usuario cargado para mostrar. Es nulo mientras se carga.
   String? userName;
+
+  /// Correo del usuario cargado. Es nulo mientras se carga.
   String? userEmail;
 
   // ---- Variables para los invernaderos ----
@@ -44,6 +71,7 @@ class _DashboardPageState extends State<DashboardPage> {
     if (userData != null) {
       final user = jsonDecode(userData);
       setState(() {
+        // Usar valores por defecto cuando no exista un campo.
         userName = user['name'] ?? 'Usuario';
         userEmail = user['email'] ?? '';
       });
@@ -70,6 +98,9 @@ class _DashboardPageState extends State<DashboardPage> {
     });
   }
 
+  /// Realiza el cierre de sesión borrando tokens y la información del
+  /// usuario en el almacenamiento seguro, y navega de vuelta a la ruta de
+  /// login limpiando la pila de navegación.
   Future<void> _logout() async {
     await _storage.delete(key: 'token');
     await _storage.delete(key: 'user');
@@ -89,10 +120,13 @@ class _DashboardPageState extends State<DashboardPage> {
       backgroundColor: beige,
 
       appBar: AppBar(
+  // No queremos el botón 'atrás' automático en esta página.
         automaticallyImplyLeading: false,
         backgroundColor: beige,
         elevation: 0,
         title: Text(
+          // Muestra el nombre del usuario cuando esté cargado, de lo
+          // contrario muestra un marcador de carga.
           'Bienvenido, ${userName ?? "Cargando..."}',
           style: const TextStyle(
             color: Colors.black87,
@@ -101,6 +135,7 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ),
         actions: [
+          // El botón de ícono abre el end drawer (drawer en el lado derecho).
           Builder(
             builder: (context) => IconButton(
               icon: const Icon(Icons.menu, color: Colors.black87),
