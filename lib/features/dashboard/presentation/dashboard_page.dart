@@ -3,21 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:green_klok_ia/routes/app_routes.dart';
 import 'package:green_klok_ia/services/greenhouse_service.dart';
+import 'package:green_klok_ia/features/dashboard/presentation/sensors/temperature_page.dart';
+import 'package:green_klok_ia/features/dashboard/presentation/sensors/humidity_page.dart';
+import 'package:green_klok_ia/features/dashboard/presentation/sensors/light_page.dart';
 
-/// DashboardPage es la pantalla principal que se muestra después de un
-/// inicio de sesión exitoso. Proporciona una vista general del estado del
-/// sistema (Riego, Clima, Alertas, Salud), un drawer con accesos a perfil y
-/// configuración, y una barra de navegación inferior para cambiar entre
-/// vistas de datos.
-///
-/// Responsabilidades:
-/// - Cargar y mostrar el nombre y correo del usuario desde el almacenamiento seguro.
-/// - Mostrar un conjunto de tarjetas de estado que resumen áreas importantes.
-/// - Proveer navegación (drawer y barra inferior) y la funcionalidad de cerrar sesión.
 class DashboardPage extends StatefulWidget {
-  /// Crea una [DashboardPage]. El widget es stateful porque carga datos
-  /// asíncronos (información del usuario) y gestiona el índice seleccionado
-  /// de la barra de navegación inferior.
   const DashboardPage({super.key});
 
   @override
@@ -25,31 +15,17 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  /// Índice actualmente seleccionado en la barra de navegación inferior.
-  /// Controla el item resaltado y puede usarse para cambiar el contenido
-  /// si la página se expande para mostrar pantallas por pestaña.
   int _selectedIndex = 0;
-
-  /// Color de fondo principal para la página del dashboard (beige suave).
   final Color beige = const Color(0xFFFFF8E1);
-
-  /// Color verde de acento usado en el encabezado del drawer y en el item
-  /// seleccionado de la navegación.
   final Color green = const Color(0xFF2E7D32);
-
-  /// Instancia de almacenamiento seguro usada para leer y borrar datos de
-  /// autenticación/usuario guardados.
   final _storage = const FlutterSecureStorage();
 
-  /// Nombre del usuario cargado para mostrar. Es nulo mientras se carga.
   String? userName;
-
-  /// Correo del usuario cargado. Es nulo mientras se carga.
   String? userEmail;
 
-  // ---- Variables para los invernaderos ----
   List<dynamic> userGreenhouses = [];
-  String? selectedGreenhouse;
+  String? selectedGreenhouseId; // 👉 ahora guardamos el ID real
+  String? selectedGreenhouseName; // 👉 para mostrar el nombre en la UI
   bool isLoadingGreenhouses = true;
 
   @override
@@ -59,118 +35,101 @@ class _DashboardPageState extends State<DashboardPage> {
     _loadGreenhouses();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _loadGreenhouses(); // recarga al volver del registro
-  }
-
-  // Cargar usuario del almacenamiento seguro
   Future<void> _loadUser() async {
     final userData = await _storage.read(key: 'user');
     if (userData != null) {
       final user = jsonDecode(userData);
       setState(() {
-        // Usar valores por defecto cuando no exista un campo.
         userName = user['name'] ?? 'Usuario';
         userEmail = user['email'] ?? '';
       });
     }
   }
 
-  // Cargar invernaderos desde el backend
   Future<void> _loadGreenhouses() async {
     final service = GreenhouseService();
     final data = await service.getGreenhouses();
-    
+
     setState(() {
       userGreenhouses = data;
       isLoadingGreenhouses = false;
+
       if (userGreenhouses.isNotEmpty) {
-        selectedGreenhouse = userGreenhouses.first['name'];
+        selectedGreenhouseId = userGreenhouses.first['_id'];
+        selectedGreenhouseName = userGreenhouses.first['name'];
       }
     });
   }
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    setState(() => _selectedIndex = index);
   }
 
-  /// Realiza el cierre de sesión borrando tokens y la información del
-  /// usuario en el almacenamiento seguro, y navega de vuelta a la ruta de
-  /// login limpiando la pila de navegación.
   Future<void> _logout() async {
     await _storage.delete(key: 'token');
     await _storage.delete(key: 'user');
-
     if (!mounted) return;
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      AppRoutes.login,
-      (route) => false,
-    );
+    Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (_) => false);
   }
 
-  // ---- UI ----
+  Widget _buildCurrentPage() {
+    if (isLoadingGreenhouses) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (userGreenhouses.isEmpty) {
+      return _buildDummyDashboard(context);
+    }
+
+    switch (_selectedIndex) {
+      case 1:
+        return TemperaturePage(selectedGreenhouse: selectedGreenhouseId);
+      case 2:
+        return HumidityPage(selectedGreenhouse: selectedGreenhouseId);
+      case 3:
+        return LightPage(selectedGreenhouse: selectedGreenhouseId);
+      default:
+        return _buildRealDashboard(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: beige,
-
       appBar: AppBar(
-  // No queremos el botón 'atrás' automático en esta página.
         automaticallyImplyLeading: false,
         backgroundColor: beige,
         elevation: 0,
         title: Text(
-          // Muestra el nombre del usuario cuando esté cargado, de lo
-          // contrario muestra un marcador de carga.
           'Bienvenido, ${userName ?? "Cargando..."}',
           style: const TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.w500,
-            fontSize: 18,
-          ),
+              color: Colors.black87, fontWeight: FontWeight.w500, fontSize: 18),
         ),
         actions: [
-          // El botón de ícono abre el end drawer (drawer en el lado derecho).
           Builder(
             builder: (context) => IconButton(
               icon: const Icon(Icons.menu, color: Colors.black87),
-              onPressed: () {
-                Scaffold.of(context).openEndDrawer();
-              },
+              onPressed: () => Scaffold.of(context).openEndDrawer(),
             ),
           ),
         ],
       ),
-
       endDrawer: _buildDrawer(),
-
-      body: SingleChildScrollView(
+      body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        child: isLoadingGreenhouses
-            ? const Center(child: CircularProgressIndicator())
-            : userGreenhouses.isEmpty
-                ? _buildDummyDashboard(context)
-                : _buildRealDashboard(context),
+        child: _buildCurrentPage(),
       ),
-
       bottomNavigationBar: _buildBottomNav(),
     );
   }
 
-  // ---- Drawer lateral ----
   Widget _buildDrawer() {
     return Drawer(
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          bottomLeft: Radius.circular(20),
-        ),
+        borderRadius:
+            BorderRadius.only(topLeft: Radius.circular(20), bottomLeft: Radius.circular(20)),
       ),
       child: ListView(
         padding: EdgeInsets.zero,
@@ -181,48 +140,30 @@ class _DashboardPageState extends State<DashboardPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const CircleAvatar(
-                  radius: 30,
-                  backgroundImage: AssetImage('assets/images/logo.png'),
-                ),
+                    radius: 30, backgroundImage: AssetImage('assets/images/logo.png')),
                 const SizedBox(height: 12),
-                Text(
-                  userName ?? 'Cargando...',
-                  style: const TextStyle(color: Colors.white, fontSize: 18),
-                ),
-                Text(
-                  userEmail ?? '',
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                ),
+                Text(userName ?? 'Cargando...',
+                    style: const TextStyle(color: Colors.white, fontSize: 18)),
+                Text(userEmail ?? '',
+                    style: const TextStyle(color: Colors.white70, fontSize: 13)),
               ],
             ),
           ),
           ListTile(
-            leading: const Icon(Icons.person_outline),
-            title: const Text('Perfil'),
-            onTap: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Funcionalidad próximamente')),
-              );
-            },
-          ),
+              leading: const Icon(Icons.person_outline),
+              title: const Text('Perfil'),
+              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Funcionalidad próximamente')))),
           ListTile(
-            leading: const Icon(Icons.settings_outlined),
-            title: const Text('Configuración'),
-            onTap: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Configuraciones próximamente')),
-              );
-            },
-          ),
+              leading: const Icon(Icons.settings_outlined),
+              title: const Text('Configuración'),
+              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Configuraciones próximamente')))),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text(
-              'Cerrar sesión',
-              style: TextStyle(color: Colors.red),
-            ),
+            title: const Text('Cerrar sesión',
+                style: TextStyle(color: Colors.red)),
             onTap: _logout,
           ),
         ],
@@ -230,21 +171,15 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ---- Dummy Dashboard (sin invernaderos) ----
   Widget _buildDummyDashboard(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         const SizedBox(height: 40),
-        Image.asset(
-          'assets/images/empty_greenhouse.png',
-          height: 200,
-        ),
+        Image.asset('assets/images/empty_greenhouse.png', height: 200),
         const SizedBox(height: 20),
-        const Text(
-          'Aún no tienes invernaderos registrados 🌱',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-        ),
+        const Text('Aún no tienes invernaderos registrados 🌱',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
         const SizedBox(height: 15),
         ElevatedButton.icon(
           onPressed: () async {
@@ -255,17 +190,14 @@ class _DashboardPageState extends State<DashboardPage> {
           label: const Text("Registrar nuevo invernadero"),
         ),
         const SizedBox(height: 50),
-        const Text(
-          'Dashboard de prueba (datos simulados):',
-          style: TextStyle(fontSize: 14, color: Colors.grey),
-        ),
+        const Text('Dashboard de prueba (datos simulados):',
+            style: TextStyle(fontSize: 14, color: Colors.grey)),
         const SizedBox(height: 15),
         _buildDummyGrid(),
       ],
     );
   }
 
-  // ---- Dashboard real (con invernaderos existentes) ----
   Widget _buildRealDashboard(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -274,75 +206,61 @@ class _DashboardPageState extends State<DashboardPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Tus invernaderos',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 17,
-              ),
-            ),
+            const Text('Tus invernaderos',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
             ElevatedButton.icon(
               onPressed: () async {
                 await Navigator.pushNamed(context, AppRoutes.registerGreenhouse);
-                _loadGreenhouses(); // recargar lista después
+                _loadGreenhouses();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: green,
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                    borderRadius: BorderRadius.circular(12)),
               ),
               icon: const Icon(Icons.add, color: Colors.white, size: 20),
-              label: const Text(
-                "Nuevo",
-                style: TextStyle(color: Colors.white, fontSize: 14),
-              ),
+              label: const Text("Nuevo",
+                  style: TextStyle(color: Colors.white, fontSize: 14)),
             ),
           ],
         ),
         const SizedBox(height: 15),
 
-        // --- Dropdown bonito ---
+        // --- Dropdown modificado ---
         Card(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 2,
           color: const Color(0xFFF1F8E9),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
-                value: selectedGreenhouse,
+                value: selectedGreenhouseId,
                 isExpanded: true,
                 dropdownColor: Colors.white,
-                icon: const Icon(Icons.arrow_drop_down_rounded, color: Colors.black87),
+                icon: const Icon(Icons.arrow_drop_down_rounded,
+                    color: Colors.black87),
                 items: userGreenhouses.map<DropdownMenuItem<String>>((gh) {
                   return DropdownMenuItem<String>(
-                    value: gh['name'],
+                    value: gh['_id'], // ✅ enviamos el ID real
                     child: Row(
                       children: [
-                        const Icon(Icons.house_rounded, color: Colors.green, size: 20),
+                        const Icon(Icons.house_rounded,
+                            color: Colors.green, size: 20),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                gh['name'],
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              Text(
-                                gh['device_code'] ?? '',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
-                              ),
+                              Text(gh['name'],
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87)),
+                              Text(gh['device_code'] ?? '',
+                                  style: const TextStyle(
+                                      fontSize: 12, color: Colors.grey)),
                             ],
                           ),
                         ),
@@ -351,8 +269,11 @@ class _DashboardPageState extends State<DashboardPage> {
                   );
                 }).toList(),
                 onChanged: (value) {
+                  final selected =
+                      userGreenhouses.firstWhere((gh) => gh['_id'] == value);
                   setState(() {
-                    selectedGreenhouse = value;
+                    selectedGreenhouseId = value;
+                    selectedGreenhouseName = selected['name'];
                   });
                 },
               ),
@@ -366,15 +287,12 @@ class _DashboardPageState extends State<DashboardPage> {
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFE8F5E9),
-            borderRadius: BorderRadius.circular(16),
-          ),
+              color: const Color(0xFFE8F5E9),
+              borderRadius: BorderRadius.circular(16)),
           child: Text(
-            'Mostrando datos de: $selectedGreenhouse',
+            'Mostrando datos de: ${selectedGreenhouseName ?? "N/A"}',
             style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
+                fontWeight: FontWeight.bold, color: Colors.black87),
           ),
         ),
         const SizedBox(height: 20),
@@ -383,7 +301,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ---- Grid de dummy data ----
   Widget _buildDummyGrid() {
     return GridView.count(
       crossAxisCount: 2,
@@ -392,29 +309,32 @@ class _DashboardPageState extends State<DashboardPage> {
       crossAxisSpacing: 12,
       mainAxisSpacing: 12,
       children: [
-        _buildCard('Riego', 'Próximo en: 2 días', const Color(0xFFBBDEFB), Icons.water_drop),
-        _buildCard('Clima', 'Calidad ambiental:\nAceptable', const Color(0xFFFFF59D), Icons.wb_sunny_outlined),
-        _buildCard('Alertas', '3 alarmas activas', const Color(0xFFFFCC80), Icons.warning_amber_outlined),
-        _buildCard('Salud', 'Excelente', const Color(0xFFC8E6C9), Icons.health_and_safety_outlined),
+        _buildCard('Riego', 'Próximo en: 2 días', const Color(0xFFBBDEFB),
+            Icons.water_drop),
+        _buildCard(
+            'Clima',
+            'Calidad ambiental:\nAceptable',
+            const Color(0xFFFFF59D),
+            Icons.wb_sunny_outlined),
+        _buildCard('Alertas', '3 alarmas activas', const Color(0xFFFFCC80),
+            Icons.warning_amber_outlined),
+        _buildCard('Salud', 'Excelente', const Color(0xFFC8E6C9),
+            Icons.health_and_safety_outlined),
       ],
     );
   }
 
-  // ---- Bottom Navigation Bar ----
   Widget _buildBottomNav() {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
+        borderRadius:
+            const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 5,
-            offset: const Offset(0, -2),
-          ),
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 5,
+              offset: const Offset(0, -2)),
         ],
       ),
       child: BottomNavigationBar(
@@ -435,7 +355,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ---- Tarjeta reutilizable ----
   Widget _buildCard(String title, String subtitle, Color color, IconData icon) {
     return Container(
       decoration: BoxDecoration(
@@ -443,10 +362,9 @@ class _DashboardPageState extends State<DashboardPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2)),
         ],
       ),
       padding: const EdgeInsets.all(14),
@@ -455,19 +373,14 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           Icon(icon, color: Colors.black54, size: 26),
           const SizedBox(height: 10),
-          Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-              fontSize: 15,
-            ),
-          ),
+          Text(title,
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                  fontSize: 15)),
           const SizedBox(height: 6),
-          Text(
-            subtitle,
-            style: const TextStyle(color: Colors.black87, fontSize: 13),
-          ),
+          Text(subtitle,
+              style: const TextStyle(color: Colors.black87, fontSize: 13)),
         ],
       ),
     );
